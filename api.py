@@ -1,4 +1,5 @@
-
+from checks.ping import check_ping
+from checks.http import check_http
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Literal
@@ -89,3 +90,33 @@ def delete_monitor(monitor_id: int):
     )
 
 
+
+@app.post("/monitors/{monitor_id}/check")
+def run_monitor_check(monitor_id: int):
+    monitor = None
+
+    for item in monitors:
+        if item["id"] == monitor_id:
+            monitor = item
+            break
+
+    if monitor is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Monitor not found",
+        )
+
+    if monitor["monitor_type"] == "ping":
+        result = check_ping(monitor["target"])
+    elif monitor["monitor_type"] == "http":
+        result = check_http(monitor["target"])
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported monitor type",
+        )
+
+    return {
+        "monitor": monitor,
+        "check": result,
+    }

@@ -1,3 +1,4 @@
+from unittest.mock import patch
 
 import unittest
 
@@ -118,6 +119,59 @@ class TestMonitorAPI(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 422)
+
+    @patch("api.check_ping")
+    def test_run_ping_check(self, mock_check_ping):
+        mock_check_ping.return_value = {
+            "status": "UP",
+            "latency_ms": 10.31,
+            "error": None,
+        }
+
+        self.client.post(
+            "/monitors",
+            json={
+                "name": "Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+
+        response = self.client.post("/monitors/1/check")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["check"]["status"], "UP")
+        mock_check_ping.assert_called_once_with("127.0.0.1")
+
+    @patch("api.check_http")
+    def test_run_http_check(self, mock_check_http):
+        mock_check_http.return_value = {
+            "status": "UP",
+            "latency_ms": 25.5,
+            "http_status_code": 200,
+            "error": None,
+        }
+
+        self.client.post(
+            "/monitors",
+            json={
+                "name": "Example Website",
+                "target": "https://example.com",
+                "monitor_type": "http",
+            },
+        )
+
+        response = self.client.post("/monitors/1/check")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["check"]["status"], "UP")
+        mock_check_http.assert_called_once_with("https://example.com")
+
+    def test_run_check_for_missing_monitor_returns_404(self):
+        response = self.client.post("/monitors/999/check")
+
+        self.assertEqual(response.status_code, 404)
+
 
 
 if __name__ == "__main__":

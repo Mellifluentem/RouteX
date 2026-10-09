@@ -1,12 +1,10 @@
-
+import platform
 import subprocess
 import time
 
 
 def check_ping(target: str, timeout_seconds: int = 2) -> dict:
-    """
-    Check whether a host responds to one Windows ping request.
-    """
+    """Check whether a host responds to a ping request."""
 
     if not target or not target.strip():
         return {
@@ -22,12 +20,27 @@ def check_ping(target: str, timeout_seconds: int = 2) -> dict:
             "error": "Timeout must be at least 1 second",
         }
 
-    command = [
-        "ping",
-        "-n", "1",
-        "-w", str(timeout_seconds * 1000),
-        target.strip(),
-    ]
+    target = target.strip()
+    system = platform.system()
+
+    if system == "Windows":
+        command = [
+            "ping", "-n", "1",
+            "-w", str(timeout_seconds * 1000),
+            target,
+        ]
+    elif system == "Linux":
+        command = [
+            "ping", "-c", "1",
+            "-W", str(timeout_seconds),
+            target,
+        ]
+    else:
+        return {
+            "status": "DOWN",
+            "latency_ms": None,
+            "error": f"Unsupported operating system: {system}",
+        }
 
     start = time.perf_counter()
 
