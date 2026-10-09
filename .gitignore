@@ -1,4 +1,5 @@
 .env
+.venv/
 .env.local
 .env.development
 .env.development.local
@@ -6,3 +7,6 @@
 .env.test.local
 .env.production
 .env.production.local
+__pycache__/
+*.py[cod]
+.pytest_cache/
