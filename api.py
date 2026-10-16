@@ -1,18 +1,23 @@
-from checks.ping import check_ping
-from checks.http import check_http
+
+from contextlib import closing
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import Literal
+
+from database import get_connection, init_db
+from checks.ping import check_ping
+from checks.http import check_http
+
 
 app = FastAPI(
     title="routeX API",
     description="A self-hosted monitoring platform",
-    version="0.3.0",
+    version="0.4.0",
 )
 
-# Temporary in-memory storage
-monitors = []
-next_monitor_id = 1
+# Veritabanı ve tablo yoksa oluştur.
+init_db()
 
 
 class MonitorCreate(BaseModel):
@@ -25,7 +30,7 @@ class MonitorCreate(BaseModel):
 def root():
     return {
         "project": "routeX",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "message": "Monitoring API is running",
     }
 
@@ -37,84 +42,97 @@ def health_check():
 
 @app.get("/monitors")
 def list_monitors():
-    return {"monitors": monitors}
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            "SELECT id, name, target, monitor_type FROM monitors ORDER BY id"
+        ).fetchall()
+
+    return {"monitors": [dict(row) for row in rows]}
 
 
 @app.post("/monitors", status_code=201)
 def create_monitor(monitor: MonitorCreate):
-    global next_monitor_id
+    name = monitor.name.strip()
+    target = monitor.target.strip()
 
-    new_monitor = {
-        "id": next_monitor_id,
-        "name": monitor.name.strip(),
-        "target": monitor.target.strip(),
-        "monitor_type": monitor.monitor_type,
-    }
-
-    if not new_monitor["name"] or not new_monitor["target"]:
+    if not name or not target:
         raise HTTPException(
             status_code=422,
             detail="Name and target cannot contain only whitespace",
         )
 
-    monitors.append(new_monitor)
-    next_monitor_id += 1
+    with closing(get_connection()) as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO monitors (name, target, monitor_type)
+            VALUES (?, ?, ?)
+            """,
+            (name, target, monitor.monitor_type),
+        )
+        connection.commit()
 
-    return new_monitor
+        row = connection.execute(
+            "SELECT id, name, target, monitor_type FROM monitors WHERE id = ?",
+            (cursor.lastrowid,),
+        ).fetchone()
+
+    return dict(row)
+
 
 @app.get("/monitors/{monitor_id}")
 def get_monitor(monitor_id: int):
-    for monitor in monitors:
-        if monitor["id"] == monitor_id:
-            return monitor
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            """
+            SELECT id, name, target, monitor_type
+            FROM monitors WHERE id = ?
+            """,
+            (monitor_id,),
+        ).fetchone()
 
-    raise HTTPException(
-        status_code=404,
-        detail="Monitor not found",
-    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+
+    return dict(row)
 
 
 @app.delete("/monitors/{monitor_id}")
 def delete_monitor(monitor_id: int):
-    for index, monitor in enumerate(monitors):
-        if monitor["id"] == monitor_id:
-            deleted_monitor = monitors.pop(index)
-            return {
-                "message": "Monitor deleted successfully",
-                "monitor": deleted_monitor,
-            }
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            """
+            SELECT id, name, target, monitor_type
+            FROM monitors WHERE id = ?
+            """,
+            (monitor_id,),
+        ).fetchone()
 
-    raise HTTPException(
-        status_code=404,
-        detail="Monitor not found",
-    )
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Monitor not found",
+            )
 
+        connection.execute(
+            "DELETE FROM monitors WHERE id = ?",
+            (monitor_id,),
+        )
+        connection.commit()
+
+    return {
+        "message": "Monitor deleted successfully",
+        "monitor": dict(row),
+    }
 
 
 @app.post("/monitors/{monitor_id}/check")
 def run_monitor_check(monitor_id: int):
-    monitor = None
-
-    for item in monitors:
-        if item["id"] == monitor_id:
-            monitor = item
-            break
-
-    if monitor is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Monitor not found",
-        )
+    monitor = get_monitor(monitor_id)
 
     if monitor["monitor_type"] == "ping":
         result = check_ping(monitor["target"])
-    elif monitor["monitor_type"] == "http":
-        result = check_http(monitor["target"])
     else:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported monitor type",
-        )
+        result = check_http(monitor["target"])
 
     return {
         "monitor": monitor,

@@ -1,8 +1,10 @@
-from unittest.mock import patch
 
+import os
+import tempfile
 import unittest
-
+from unittest.mock import patch
 from fastapi.testclient import TestClient
+
 
 import api
 
@@ -10,10 +12,16 @@ import api
 class TestMonitorAPI(unittest.TestCase):
 
     def setUp(self):
-        # Her test temiz bir bellek içi listeyle başlasın.
-        api.monitors.clear()
-        api.next_monitor_id = 1
+        self.test_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.test_db.close()
+
+        import database
+        database.DATABASE_PATH = self.test_db.name
+        api.DATABASE_PATH = self.test_db.name
+
+        api.init_db()
         self.client = TestClient(api.app)
+
 
     def test_root_endpoint(self):
         response = self.client.get("/")
@@ -27,6 +35,7 @@ class TestMonitorAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "ok")
 
+
     def test_create_monitor(self):
         response = self.client.post(
             "/monitors",
@@ -38,27 +47,28 @@ class TestMonitorAPI(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["id"], 1)
+        self.assertGreater(response.json()["id"], 0)
         self.assertEqual(response.json()["name"], "Localhost")
 
     def test_list_monitors(self):
-        self.client.post(
-            "/monitors",
-            json={
-                "name": "Example Website",
-                "target": "https://example.com",
-                "monitor_type": "http",
-            },
-        )
+            self.client.post(
+                "/monitors",
+                json={
+                    "name": "Example Website",
+                    "target": "https://example.com",
+                    "monitor_type": "http",
+                },
+            )
 
-        response = self.client.get("/monitors")
+            response = self.client.get("/monitors")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()["monitors"]), 1)
-        self.assertEqual(
-            response.json()["monitors"][0]["monitor_type"],
-            "http",
-        )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(response.json()["monitors"]), 1)
+            self.assertEqual(
+                response.json()["monitors"][0]["monitor_type"],
+                "http",
+            )
+
 
     def test_get_monitor_by_id(self):
         create_response = self.client.post(
@@ -128,7 +138,8 @@ class TestMonitorAPI(unittest.TestCase):
             "error": None,
         }
 
-        self.client.post(
+
+        create_response = self.client.post(
             "/monitors",
             json={
                 "name": "Localhost",
@@ -136,12 +147,16 @@ class TestMonitorAPI(unittest.TestCase):
                 "monitor_type": "ping",
             },
         )
+        monitor_id = create_response.json()["id"]
 
-        response = self.client.post("/monitors/1/check")
+        response = self.client.post(f"/monitors/{monitor_id}/check")
+
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["check"]["status"], "UP")
         mock_check_ping.assert_called_once_with("127.0.0.1")
+
+
 
     @patch("api.check_http")
     def test_run_http_check(self, mock_check_http):
@@ -152,7 +167,7 @@ class TestMonitorAPI(unittest.TestCase):
             "error": None,
         }
 
-        self.client.post(
+        create_response = self.client.post(
             "/monitors",
             json={
                 "name": "Example Website",
@@ -160,12 +175,14 @@ class TestMonitorAPI(unittest.TestCase):
                 "monitor_type": "http",
             },
         )
+        monitor_id = create_response.json()["id"]
 
-        response = self.client.post("/monitors/1/check")
+        response = self.client.post(f"/monitors/{monitor_id}/check")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["check"]["status"], "UP")
         mock_check_http.assert_called_once_with("https://example.com")
+
 
     def test_run_check_for_missing_monitor_returns_404(self):
         response = self.client.post("/monitors/999/check")
