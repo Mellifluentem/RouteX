@@ -1,31 +1,40 @@
 # RouteX
 
-A lightweight monitoring platform for checking host and web service availability.
+A lightweight, self-hosted monitoring platform for checking host and web service availability.
 
 ## Features
 
-* Ping-based host availability checks
-* HTTP/HTTPS monitoring
-* UP/DOWN status detection
-* HTML status dashboard
+- Ping-based host monitoring
+- HTTP/HTTPS monitoring
+- UP/DOWN status detection
+- Latency and error reporting
+- REST API built with FastAPI
+- SQLite database integration
+- Monitoring check history
 
 ## Technologies
 
-* Ping / ICMP
-* HTTP / HTTPS
-* HTML
-* Docker *(planned)*
+- Python
+- FastAPI
+- SQLite
+- HTML, CSS, JavaScript
 
 ## Project Status
 
-* [x] V0.1 — Initial monitoring setup
-* [x] V0.2 — HTTP/HTTPS monitoring
-* [ ] Docker integration
-* [ ] Dashboard improvements
+- [x] V0.1 — Ping monitoring
+- [x] V0.2 — HTTP/HTTPS monitoring
+- [x] V0.3 — FastAPI REST API
+- [x] V0.4 — SQLite integration
+- [ ] V0.5 — Monitoring history and web interface improvements
+- [ ] Docker integration
 
 ## Goal
 
-RouteX aims to provide a simple way to monitor hosts and web services and display their availability status.
+RouteX aims to provide a modular, self-hosted platform for monitoring hosts and web services through a simple API and web dashboard.
+
+## Development Status
+
+RouteX is currently in **beta development**. Features and functionality may change as development continues. The project is not yet considered stable or production-ready.
 
 ## License
 
