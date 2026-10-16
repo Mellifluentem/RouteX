@@ -27,7 +27,8 @@ class TestMonitorAPI(unittest.TestCase):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["project"], "routeX")
+        self.assertIn("text/html", response.headers["content-type"])
+        self.assertIn("routeX", response.text)
 
     def test_health_endpoint(self):
         response = self.client.get("/health")
@@ -189,6 +190,48 @@ class TestMonitorAPI(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+
+    @patch("api.check_ping")
+    def test_run_check_is_saved_to_history(self, mock_check_ping):
+        mock_check_ping.return_value = {
+            "status": "UP",
+            "latency_ms": 12.5,
+            "error": None,
+        }
+
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        check_response = self.client.post(
+            f"/monitors/{monitor_id}/check"
+        )
+
+        self.assertEqual(check_response.status_code, 200)
+
+        history_response = self.client.get(
+            f"/monitors/{monitor_id}/checks"
+        )
+
+        self.assertEqual(history_response.status_code, 200)
+        checks = history_response.json()["checks"]
+        self.assertEqual(len(checks), 1)
+        self.assertEqual(checks[0]["monitor_id"], monitor_id)
+        self.assertEqual(checks[0]["status"], "UP")
+        self.assertEqual(checks[0]["latency_ms"], 12.5)
+        self.assertIsNone(checks[0]["error"])
+        self.assertIn("checked_at", checks[0])
+
+    def test_check_history_for_missing_monitor_returns_404(self):
+        response = self.client.get("/monitors/999/checks")
+
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":

@@ -4,10 +4,14 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from pydantic import field_validator
 
 from database import get_connection, init_db
 from checks.ping import check_ping
 from checks.http import check_http
+from pathlib import Path
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 
 app = FastAPI(
@@ -15,24 +19,40 @@ app = FastAPI(
     description="A self-hosted monitoring platform",
     version="0.4.0",
 )
+BASE_DIR = Path(__file__).resolve().parent
 
-# Veritabanı ve tablo yoksa oluştur.
+app.mount(
+    "/static",
+    StaticFiles(directory=BASE_DIR / "static"),
+    name="static",
+)
+
 init_db()
+
+
 
 
 class MonitorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    target: str = Field(min_length=1, max_length=500)
     monitor_type: Literal["ping", "http"]
+    target: str = Field(min_length=1, max_length=500)
+
+    @field_validator("target")
+    @classmethod
+    def normalize_http_target(cls, target: str, info):
+        target = target.strip()
+
+        if info.data.get("monitor_type") == "http":
+            if not target.startswith(("http://", "https://")):
+                target = "https://" + target
+
+        return target
+
 
 
 @app.get("/")
 def root():
-    return {
-        "project": "routeX",
-        "version": "0.4.0",
-        "message": "Monitoring API is running",
-    }
+    return FileResponse(BASE_DIR / "templates" / "index.html")
 
 
 @app.get("/health")
@@ -125,6 +145,8 @@ def delete_monitor(monitor_id: int):
     }
 
 
+
+
 @app.post("/monitors/{monitor_id}/check")
 def run_monitor_check(monitor_id: int):
     monitor = get_monitor(monitor_id)
@@ -134,7 +156,41 @@ def run_monitor_check(monitor_id: int):
     else:
         result = check_http(monitor["target"])
 
+    with closing(get_connection()) as connection:
+        connection.execute(
+            """
+            INSERT INTO checks (monitor_id, status, latency_ms, error)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                monitor["id"],
+                result["status"],
+                result.get("latency_ms"),
+                result.get("error"),
+            ),
+        )
+        connection.commit()
+
     return {
         "monitor": monitor,
         "check": result,
     }
+
+
+@app.get("/monitors/{monitor_id}/checks")
+def get_monitor_checks(monitor_id: int):
+    # Check that the monitor exists
+    get_monitor(monitor_id)
+
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            """
+            SELECT id, monitor_id, status, latency_ms, error, checked_at
+            FROM checks
+            WHERE monitor_id = ?
+            ORDER BY id DESC
+            """,
+            (monitor_id,),
+        ).fetchall()
+
+    return {"checks": [dict(row) for row in rows]}

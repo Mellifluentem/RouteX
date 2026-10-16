@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>routeX | Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>routeX</h1>
+        <p>Monitor anything you can reach.</p>
+    </header>
+
+    <main>
+        <section id="overview">
+            <h2>Dashboard</h2>
+
+            <div class="stats">
+                <article>
+                    <h3>Total Monitors</h3>
+                    <p id="total-count">0</p>
+                </article>
+
+                <article>
+                    <h3>UP</h3>
+                    <p id="up-count">0</p>
+                </article>
+
+                <article>
+                    <h3>DOWN</h3>
+                    <p id="down-count">0</p>
+                </article>
+            </div>
+        </section>
+
+
+        <section id="add-monitor">
+            <h2>Add Monitor</h2>
+
+            <form id="monitor-form">
+                <label for="monitor-name">Name</label>
+                <input
+                    type="text"
+                    id="monitor-name"
+                    name="name"
+                    placeholder="e.g. My Website"
+                    required
+                >
+
+                <label for="monitor-target">Target</label>
+                <input
+                    type="text"
+                    id="monitor-target"
+                    name="target"
+                    placeholder="e.g. https://example.com or 127.0.0.1"
+                    required
+                >
+
+                <label for="monitor-type">Monitor Type</label>
+                <select id="monitor-type" name="monitor_type">
+                    <option value="ping">Ping</option>
+                    <option value="http">HTTP</option>
+                </select>
+
+                <button type="submit">Add Monitor</button>
+            </form>
+        </section>
+
+
+        <section id="monitors">
+            <h2>Monitors</h2>
+            <p id="loading-message">Loading monitors...</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Target</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="monitor-list"></tbody>
+            </table>
+        </section>
+
+        <section id="history-section" hidden>
+            <h2>Check History</h2>
+            <p id="history-monitor-name"></p>
+            <p id="history-message"></p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Latency</th>
+                        <th>Error</th>
+                        <th>Checked At</th>
+                    </tr>
+                </thead>
+                <tbody id="history-list"></tbody>
+            </table>
+        </section>
+
+    </main>
+    <script src="/static/app.js"></script>
+</body>
+</html>
