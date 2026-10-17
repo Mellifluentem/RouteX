@@ -129,7 +129,7 @@ def health_check():
 def list_monitors():
     with closing(get_connection()) as connection:
         rows = connection.execute(
-            "SELECT id, name, target, monitor_type FROM monitors ORDER BY id"
+            "SELECT id, name, target, monitor_type, enabled FROM monitors ORDER BY id"
         ).fetchall()
 
     return {"monitors": [dict(row) for row in rows]}

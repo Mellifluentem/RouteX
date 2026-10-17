@@ -100,7 +100,53 @@ async function loadMonitors() {
             statusCell.textContent = "Not checked";
             statusCell.style.color = "#91a0b8";
 
-            const actionsCell = document.createElement("td");
+          const actionsCell = document.createElement("td");
+
+          // Enable / Disable button
+          const toggleButton = document.createElement("button");
+          toggleButton.style.marginLeft = "8px";
+
+          function updateToggleButton() {
+              toggleButton.textContent = monitor.enabled ? "Disable" : "Enable";
+          }
+
+          updateToggleButton();
+
+          toggleButton.addEventListener("click", async () => {
+              toggleButton.disabled = true;
+
+              try {
+                  const response = await fetch(
+                      `/monitors/${monitor.id}/enabled`,
+                      {
+                          method: "PATCH",
+                          headers: {
+                              "Content-Type": "application/json"
+                          },
+                          body: JSON.stringify({
+                              enabled: !monitor.enabled
+                          })
+                      }
+                  );
+
+                  const data = await response.json();
+
+                  if (!response.ok) {
+                      throw new Error(
+                          data.detail || "Could not update monitor status."
+                      );
+                  }
+
+                  await loadMonitors();
+              } catch (error) {
+                  alert(error.message);
+                  console.error(error);
+              } finally {
+                  toggleButton.disabled = false;
+              }
+          });
+
+          actionsCell.appendChild(toggleButton);
 
             // Check button
             const checkButton = document.createElement("button");
