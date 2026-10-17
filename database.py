@@ -19,6 +19,7 @@ def get_connection():
     return connection
 
 
+
 def init_db():
     with closing(get_connection()) as connection:
         connection.execute(
@@ -32,6 +33,22 @@ def init_db():
             )
             """
         )
+
+        # Check whether the enabled column already exists.
+        columns = connection.execute(
+            "PRAGMA table_info(monitors)"
+        ).fetchall()
+
+        column_names = [column["name"] for column in columns]
+
+        # Add the column only if it is missing.
+        if "enabled" not in column_names:
+            connection.execute(
+                """
+                ALTER TABLE monitors
+                ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1
+                """
+            )
 
         connection.execute(
             """

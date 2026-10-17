@@ -119,6 +119,58 @@ class TestMonitorAPI(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+
+    def test_disable_monitor(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}/enabled",
+            json={"enabled": False},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["monitor"]["enabled"], 0)
+
+    def test_enable_monitor(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        self.client.patch(
+            f"/monitors/{monitor_id}/enabled",
+            json={"enabled": False},
+        )
+        response = self.client.patch(
+            f"/monitors/{monitor_id}/enabled",
+            json={"enabled": True},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["monitor"]["enabled"], 1)
+
+    def test_set_enabled_for_missing_monitor_returns_404(self):
+        response = self.client.patch(
+            "/monitors/999/enabled",
+            json={"enabled": False},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+
     def test_invalid_monitor_type_returns_422(self):
         response = self.client.post(
             "/monitors",

@@ -147,6 +147,49 @@ def delete_monitor(monitor_id: int):
 
 
 
+class MonitorEnabledUpdate(BaseModel):
+    enabled: bool
+
+
+@app.patch("/monitors/{monitor_id}/enabled")
+def set_monitor_enabled(
+    monitor_id: int,
+    update: MonitorEnabledUpdate,
+):
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            "SELECT id FROM monitors WHERE id = ?",
+            (monitor_id,),
+        ).fetchone()
+
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Monitor not found",
+            )
+
+        connection.execute(
+            "UPDATE monitors SET enabled = ? WHERE id = ?",
+            (int(update.enabled), monitor_id),
+        )
+        connection.commit()
+
+        updated_row = connection.execute(
+            """
+            SELECT id, name, target, monitor_type, enabled
+            FROM monitors
+            WHERE id = ?
+            """,
+            (monitor_id,),
+        ).fetchone()
+
+    return {"monitor": dict(updated_row)}
+
+
+
+
+
+
 @app.post("/monitors/{monitor_id}/check")
 def run_monitor_check(monitor_id: int):
     monitor = get_monitor(monitor_id)
