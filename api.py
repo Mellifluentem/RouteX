@@ -1,5 +1,7 @@
 
-from contextlib import closing
+import asyncio
+from contextlib import asynccontextmanager, closing
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -14,11 +16,26 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(automatic_monitoring())
+    yield
+    task.cancel()
+
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
 app = FastAPI(
     title="routeX API",
     description="A self-hosted monitoring platform",
-    version="0.4.0",
+    version="0.6.0",
+    lifespan=lifespan,
 )
+
+
 BASE_DIR = Path(__file__).resolve().parent
 
 app.mount(
@@ -28,6 +45,54 @@ app.mount(
 )
 
 init_db()
+
+CHECK_INTERVAL_SECONDS = 60
+
+
+async def automatic_monitoring():
+    while True:
+        try:
+            with closing(get_connection()) as connection:
+                monitors = connection.execute(
+                    """
+                    SELECT id, name, target, monitor_type
+                    FROM monitors
+                    WHERE enabled = 1
+                    """
+                ).fetchall()
+
+            for monitor in monitors:
+                monitor = dict(monitor)
+
+                if monitor["monitor_type"] == "ping":
+                    result = await asyncio.to_thread(
+                        check_ping, monitor["target"]
+                    )
+                else:
+                    result = await asyncio.to_thread(
+                        check_http, monitor["target"]
+                    )
+
+                with closing(get_connection()) as connection:
+                    connection.execute(
+                        """
+                        INSERT INTO checks
+                            (monitor_id, status, latency_ms, error)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            monitor["id"],
+                            result["status"],
+                            result.get("latency_ms"),
+                            result.get("error"),
+                        ),
+                    )
+                    connection.commit()
+
+        except Exception as error:
+            print(f"Automatic monitoring error: {error}")
+
+        await asyncio.sleep(CHECK_INTERVAL_SECONDS)
 
 
 
