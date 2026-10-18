@@ -16,6 +16,7 @@ A lightweight, modular, self-hosted monitoring platform for checking host and we
 - Enable and disable monitors from the web dashboard
 - Automatic background monitoring every 60 seconds
 - Web dashboard for managing and viewing monitors
+- Create, edit, and delete monitors
 
 ## Technologies
 
@@ -27,7 +28,7 @@ A lightweight, modular, self-hosted monitoring platform for checking host and we
 
 ## Project Status
 
-RouteX is currently under active development.
+RouteX is under active development.
 
 - [x] V0.1 — Ping monitoring
 - [x] V0.2 — HTTP/HTTPS monitoring
@@ -35,6 +36,7 @@ RouteX is currently under active development.
 - [x] V0.4 — SQLite integration
 - [x] V0.5 — Monitoring check history
 - [x] V0.6 — Automatic monitoring and monitor enable/disable controls
+- [x] V0.7 — Monitor editing through the API and web dashboard
 - [ ] Future — TCP port monitoring
 - [ ] Future — Docker integration
 - [ ] Future — Agent-based monitoring
@@ -45,7 +47,7 @@ RouteX is currently under active development.
 
 - Python 3.10 or newer
 - Git
-- Python dependencies listed in requirements.txt
+- Python dependencies listed in `requirements.txt`
 
 ### Installation
 
@@ -84,11 +86,11 @@ Start the application:
 uvicorn api:app --reload
 ```
 
-Open the dashboard at:
+Open the web dashboard:
 
 http://127.0.0.1:8000
 
-The API documentation is available at:
+API documentation is available at:
 
 http://127.0.0.1:8000/docs
 
