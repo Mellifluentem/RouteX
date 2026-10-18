@@ -113,6 +113,11 @@ class MonitorCreate(BaseModel):
 
         return target
 
+class MonitorUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    monitor_type: Literal["ping", "http"] | None = None
+    target: str | None = Field(default=None, min_length=1, max_length=500)
+
 
 
 @app.get("/")
@@ -179,6 +184,77 @@ def get_monitor(monitor_id: int):
         raise HTTPException(status_code=404, detail="Monitor not found")
 
     return dict(row)
+
+
+@app.patch("/monitors/{monitor_id}")
+def update_monitor(monitor_id: int, update: MonitorUpdate):
+    changes = update.model_dump(exclude_unset=True)
+
+    if not changes:
+        raise HTTPException(
+            status_code=422,
+            detail="At least one field must be provided",
+        )
+
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            """
+            SELECT id, name, target, monitor_type
+            FROM monitors
+            WHERE id = ?
+            """,
+            (monitor_id,),
+        ).fetchone()
+
+        if row is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Monitor not found",
+            )
+
+        monitor = dict(row)
+        monitor.update(changes)
+
+        name = monitor["name"].strip()
+        target = monitor["target"].strip()
+
+        if not name or not target:
+            raise HTTPException(
+                status_code=422,
+                detail="Name and target cannot contain only whitespace",
+            )
+
+        if monitor["monitor_type"] == "http":
+            if not target.startswith(("http://", "https://")):
+                target = "https://" + target
+
+        connection.execute(
+            """
+            UPDATE monitors
+            SET name = ?, target = ?, monitor_type = ?
+            WHERE id = ?
+            """,
+            (
+                name,
+                target,
+                monitor["monitor_type"],
+                monitor_id,
+            ),
+        )
+        connection.commit()
+
+        updated_row = connection.execute(
+            """
+            SELECT id, name, target, monitor_type, enabled
+            FROM monitors
+            WHERE id = ?
+            """,
+            (monitor_id,),
+        ).fetchone()
+
+    return {"monitor": dict(updated_row)}
+
+
 
 
 @app.delete("/monitors/{monitor_id}")

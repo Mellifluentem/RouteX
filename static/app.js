@@ -171,6 +171,32 @@ async function loadMonitors() {
           actionsCell.appendChild(historyButton);
 
 
+          // Edit button
+          const editButton = document.createElement("button");
+          editButton.textContent = "Edit";
+          editButton.style.marginLeft = "8px";
+
+          editButton.addEventListener("click", () => {
+              document.getElementById("edit-monitor-id").value =
+                  monitor.id;
+              document.getElementById("edit-monitor-name").value =
+                  monitor.name;
+              document.getElementById("edit-monitor-target").value =
+                  monitor.target;
+              document.getElementById("edit-monitor-type").value =
+                  monitor.monitor_type;
+
+              const editSection =
+                  document.getElementById("edit-monitor-section");
+
+              editSection.hidden = false;
+              editSection.scrollIntoView({ behavior: "smooth" });
+          });
+
+          actionsCell.appendChild(editButton);
+
+
+
             // Delete button
             const deleteButton = document.createElement("button");
             deleteButton.textContent = "Delete";
@@ -330,6 +356,70 @@ monitorForm.addEventListener("submit", async (event) => {
         alert(`Error: ${error.message}`);
         console.error(error);
     }
+});
+
+
+
+
+const editMonitorForm = document.getElementById("edit-monitor-form");
+
+editMonitorForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const monitorId =
+        document.getElementById("edit-monitor-id").value;
+    const name =
+        document.getElementById("edit-monitor-name").value.trim();
+    const target =
+        document.getElementById("edit-monitor-target").value.trim();
+    const monitorType =
+        document.getElementById("edit-monitor-type").value;
+
+    const submitButton =
+        editMonitorForm.querySelector('button[type="submit"]');
+
+    submitButton.disabled = true;
+
+    try {
+        const response = await fetch(`/monitors/${monitorId}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name: name,
+                target: target,
+                monitor_type: monitorType
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                typeof data.detail === "string"
+                    ? data.detail
+                    : JSON.stringify(data.detail || "Could not update monitor.")
+            );
+        }
+
+        document.getElementById("edit-monitor-section").hidden = true;
+        editMonitorForm.reset();
+
+        await loadMonitors();
+
+        alert("Monitor updated successfully!");
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+        console.error(error);
+    } finally {
+        submitButton.disabled = false;
+    }
+});
+
+document.getElementById("cancel-edit-button").addEventListener("click", () => {
+    document.getElementById("edit-monitor-section").hidden = true;
+    editMonitorForm.reset();
 });
 
 loadMonitors();

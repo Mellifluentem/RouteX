@@ -87,6 +87,43 @@
             </table>
         </section>
 
+
+        <section id="edit-monitor-section" hidden>
+            <h2>Edit Monitor</h2>
+
+            <form id="edit-monitor-form">
+                <input type="hidden" id="edit-monitor-id">
+
+                <label for="edit-monitor-name">Name</label>
+                <input
+                    type="text"
+                    id="edit-monitor-name"
+                    required
+                    maxlength="100"
+                >
+
+                <label for="edit-monitor-target">Target</label>
+                <input
+                    type="text"
+                    id="edit-monitor-target"
+                    required
+                    maxlength="500"
+                >
+
+                <label for="edit-monitor-type">Monitor Type</label>
+                <select id="edit-monitor-type" required>
+                    <option value="ping">Ping</option>
+                    <option value="http">HTTP</option>
+                </select>
+
+                <button type="submit">Save Changes</button>
+                <button type="button" id="cancel-edit-button">
+                    Cancel
+                </button>
+            </form>
+        </section>
+
+
         <section id="history-section" hidden>
             <h2>Check History</h2>
             <p id="history-monitor-name"></p>

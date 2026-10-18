@@ -286,5 +286,118 @@ class TestMonitorAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+
+    def test_update_monitor_name(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Old Name",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}",
+            json={"name": "New Name"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["monitor"]["name"], "New Name")
+        self.assertEqual(response.json()["monitor"]["target"], "127.0.0.1")
+        self.assertEqual(response.json()["monitor"]["monitor_type"], "ping")
+
+    def test_update_monitor_target(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Example",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}",
+            json={"target": "192.168.1.1"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["monitor"]["target"],
+            "192.168.1.1",
+        )
+
+    def test_update_monitor_type_and_normalize_target(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Example",
+                "target": "example.com",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}",
+            json={"monitor_type": "http"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["monitor"]["monitor_type"], "http")
+        self.assertEqual(
+            response.json()["monitor"]["target"],
+            "https://example.com",
+        )
+
+    def test_update_missing_monitor_returns_404(self):
+        response = self.client.patch(
+            "/monitors/999",
+            json={"name": "New Name"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_update_monitor_with_invalid_type_returns_422(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Example",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}",
+            json={"monitor_type": "ftp"},
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_update_monitor_with_empty_body_returns_422(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Example",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}",
+            json={},
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+
+
 if __name__ == "__main__":
     unittest.main()
