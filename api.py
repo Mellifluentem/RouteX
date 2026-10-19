@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from pydantic import field_validator
-
+from pydantic import BaseModel, Field, field_validator, model_validator
+from checks.tcp import check_tcp
 from database import get_connection, init_db
 from checks.ping import check_ping
 from checks.http import check_http
@@ -55,7 +54,7 @@ async def automatic_monitoring():
             with closing(get_connection()) as connection:
                 monitors = connection.execute(
                     """
-                    SELECT id, name, target, monitor_type
+                    SELECT id, name, target, monitor_type, port
                     FROM monitors
                     WHERE enabled = 1
                     """
@@ -68,9 +67,13 @@ async def automatic_monitoring():
                     result = await asyncio.to_thread(
                         check_ping, monitor["target"]
                     )
-                else:
+                elif monitor["monitor_type"] == "http":
                     result = await asyncio.to_thread(
                         check_http, monitor["target"]
+                    )
+                else:
+                    result = await asyncio.to_thread(
+                        check_tcp, monitor["target"], monitor["port"]
                     )
 
                 with closing(get_connection()) as connection:
@@ -97,10 +100,12 @@ async def automatic_monitoring():
 
 
 
+
 class MonitorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    monitor_type: Literal["ping", "http"]
+    monitor_type: Literal["ping", "http", "tcp"]
     target: str = Field(min_length=1, max_length=500)
+    port: int | None = Field(default=None, ge=1, le=65535)
 
     @field_validator("target")
     @classmethod
@@ -113,10 +118,24 @@ class MonitorCreate(BaseModel):
 
         return target
 
+    @model_validator(mode="after")
+    def validate_port(self):
+        if self.monitor_type == "tcp" and self.port is None:
+            raise ValueError("Port is required for TCP monitors")
+
+        if self.monitor_type != "tcp" and self.port is not None:
+            raise ValueError("Port can only be set for TCP monitors")
+
+        return self
+
+
+
 class MonitorUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    monitor_type: Literal["ping", "http"] | None = None
+    monitor_type: Literal["ping", "http", "tcp"] | None = None
     target: str | None = Field(default=None, min_length=1, max_length=500)
+    port: int | None = Field(default=None, ge=1, le=65535)
+
 
 
 
@@ -134,7 +153,7 @@ def health_check():
 def list_monitors():
     with closing(get_connection()) as connection:
         rows = connection.execute(
-            "SELECT id, name, target, monitor_type, enabled FROM monitors ORDER BY id"
+            "SELECT id, name, target, monitor_type, enabled, port FROM monitors ORDER BY id"
         ).fetchall()
 
     return {"monitors": [dict(row) for row in rows]}
@@ -154,15 +173,15 @@ def create_monitor(monitor: MonitorCreate):
     with closing(get_connection()) as connection:
         cursor = connection.execute(
             """
-            INSERT INTO monitors (name, target, monitor_type)
-            VALUES (?, ?, ?)
+            INSERT INTO monitors (name, target, monitor_type, port)
+            VALUES (?, ?, ?, ?)
             """,
-            (name, target, monitor.monitor_type),
+            (name, target, monitor.monitor_type, monitor.port),
         )
         connection.commit()
 
         row = connection.execute(
-            "SELECT id, name, target, monitor_type FROM monitors WHERE id = ?",
+            "SELECT id, name, target, monitor_type, port FROM monitors WHERE id = ?",
             (cursor.lastrowid,),
         ).fetchone()
 
@@ -174,7 +193,7 @@ def get_monitor(monitor_id: int):
     with closing(get_connection()) as connection:
         row = connection.execute(
             """
-            SELECT id, name, target, monitor_type
+            SELECT id, name, target, monitor_type, enabled, port
             FROM monitors WHERE id = ?
             """,
             (monitor_id,),
@@ -184,6 +203,7 @@ def get_monitor(monitor_id: int):
         raise HTTPException(status_code=404, detail="Monitor not found")
 
     return dict(row)
+
 
 
 @app.patch("/monitors/{monitor_id}")
@@ -199,7 +219,7 @@ def update_monitor(monitor_id: int, update: MonitorUpdate):
     with closing(get_connection()) as connection:
         row = connection.execute(
             """
-            SELECT id, name, target, monitor_type
+            SELECT id, name, target, monitor_type, port
             FROM monitors
             WHERE id = ?
             """,
@@ -217,6 +237,8 @@ def update_monitor(monitor_id: int, update: MonitorUpdate):
 
         name = monitor["name"].strip()
         target = monitor["target"].strip()
+        monitor_type = monitor["monitor_type"]
+        port = monitor["port"]
 
         if not name or not target:
             raise HTTPException(
@@ -224,20 +246,35 @@ def update_monitor(monitor_id: int, update: MonitorUpdate):
                 detail="Name and target cannot contain only whitespace",
             )
 
-        if monitor["monitor_type"] == "http":
+        if monitor_type == "http":
             if not target.startswith(("http://", "https://")):
                 target = "https://" + target
+
+        if monitor_type == "tcp":
+            if port is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Port is required for TCP monitors",
+                )
+            if not 1 <= port <= 65535:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Port must be between 1 and 65535",
+                )
+        else:
+            port = None
 
         connection.execute(
             """
             UPDATE monitors
-            SET name = ?, target = ?, monitor_type = ?
+            SET name = ?, target = ?, monitor_type = ?, port = ?
             WHERE id = ?
             """,
             (
                 name,
                 target,
-                monitor["monitor_type"],
+                monitor_type,
+                port,
                 monitor_id,
             ),
         )
@@ -245,7 +282,7 @@ def update_monitor(monitor_id: int, update: MonitorUpdate):
 
         updated_row = connection.execute(
             """
-            SELECT id, name, target, monitor_type, enabled
+            SELECT id, name, target, monitor_type, enabled, port
             FROM monitors
             WHERE id = ?
             """,
@@ -337,8 +374,10 @@ def run_monitor_check(monitor_id: int):
 
     if monitor["monitor_type"] == "ping":
         result = check_ping(monitor["target"])
-    else:
+    elif monitor["monitor_type"] == "http":
         result = check_http(monitor["target"])
+    else:
+        result = check_tcp(monitor["target"], monitor["port"])
 
     with closing(get_connection()) as connection:
         connection.execute(

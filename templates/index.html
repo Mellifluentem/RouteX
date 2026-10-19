@@ -62,7 +62,20 @@
                 <select id="monitor-type" name="monitor_type">
                     <option value="ping">Ping</option>
                     <option value="http">HTTP</option>
+                    <option value="tcp">TCP Port</option>
                 </select>
+
+                <div id="monitor-port-section" hidden>
+                    <label for="monitor-port">Port</label>
+                    <input
+                        type="number"
+                        id="monitor-port"
+                        name="port"
+                        min="1"
+                        max="65535"
+                        placeholder="e.g. 443"
+                    >
+                </div>
 
                 <button type="submit">Add Monitor</button>
             </form>
@@ -114,7 +127,19 @@
                 <select id="edit-monitor-type" required>
                     <option value="ping">Ping</option>
                     <option value="http">HTTP</option>
+                    <option value="tcp">TCP Port</option>
                 </select>
+
+                <div id="edit-monitor-port-section" hidden>
+                    <label for="edit-monitor-port">Port</label>
+                    <input
+                        type="number"
+                        id="edit-monitor-port"
+                        min="1"
+                        max="65535"
+                        placeholder="e.g. 443"
+                    >
+                </div>
 
                 <button type="submit">Save Changes</button>
                 <button type="button" id="cancel-edit-button">

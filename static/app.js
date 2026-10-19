@@ -185,8 +185,11 @@ async function loadMonitors() {
                   monitor.target;
               document.getElementById("edit-monitor-type").value =
                   monitor.monitor_type;
+              editMonitorPortInput.value = monitor.port ?? "";
 
-              const editSection =
+              updateEditMonitorPortVisibility();
+
+            const editSection =
                   document.getElementById("edit-monitor-section");
 
               editSection.hidden = false;
@@ -315,6 +318,29 @@ async function runCheck(monitorId, statusCell, button) {
     }
 }
 
+// TCP port field visibility
+const monitorTypeSelect = document.getElementById("monitor-type");
+const monitorPortSection = document.getElementById("monitor-port-section");
+const monitorPortInput = document.getElementById("monitor-port");
+
+function updateMonitorPortVisibility() {
+    const isTcp = monitorTypeSelect.value === "tcp";
+
+    monitorPortSection.hidden = !isTcp;
+    monitorPortInput.required = isTcp;
+
+    if (!isTcp) {
+        monitorPortInput.value = "";
+    }
+}
+
+monitorTypeSelect.addEventListener(
+    "change",
+    updateMonitorPortVisibility
+);
+
+updateMonitorPortVisibility();
+
 // Add monitor form
 const monitorForm = document.getElementById("monitor-form");
 
@@ -324,6 +350,9 @@ monitorForm.addEventListener("submit", async (event) => {
     const name = document.getElementById("monitor-name").value.trim();
     const target = document.getElementById("monitor-target").value.trim();
     const monitorType = document.getElementById("monitor-type").value;
+    const portInput = document.getElementById("monitor-port");
+    const port = monitorType === "tcp" ? Number(portInput.value) : null;
+
 
     try {
         const response = await fetch("/monitors", {
@@ -334,7 +363,8 @@ monitorForm.addEventListener("submit", async (event) => {
             body: JSON.stringify({
                 name: name,
                 target: target,
-                monitor_type: monitorType
+                monitor_type: monitorType,
+                ...(monitorType === "tcp" ? { port: port } : {})
             })
         });
 
@@ -359,6 +389,32 @@ monitorForm.addEventListener("submit", async (event) => {
 });
 
 
+// TCP port field visibility for edit form
+const editMonitorTypeSelect =
+    document.getElementById("edit-monitor-type");
+const editMonitorPortSection =
+    document.getElementById("edit-monitor-port-section");
+const editMonitorPortInput =
+    document.getElementById("edit-monitor-port");
+
+function updateEditMonitorPortVisibility() {
+    const isTcp = editMonitorTypeSelect.value === "tcp";
+
+    editMonitorPortSection.hidden = !isTcp;
+    editMonitorPortInput.required = isTcp;
+
+    if (!isTcp) {
+        editMonitorPortInput.value = "";
+    }
+}
+
+editMonitorTypeSelect.addEventListener(
+    "change",
+    updateEditMonitorPortVisibility
+);
+
+updateEditMonitorPortVisibility();
+
 
 
 const editMonitorForm = document.getElementById("edit-monitor-form");
@@ -374,8 +430,11 @@ editMonitorForm.addEventListener("submit", async (event) => {
         document.getElementById("edit-monitor-target").value.trim();
     const monitorType =
         document.getElementById("edit-monitor-type").value;
+    const port = monitorType === "tcp"
+        ? Number(editMonitorPortInput.value)
+        : null;
 
-    const submitButton =
+  const submitButton =
         editMonitorForm.querySelector('button[type="submit"]');
 
     submitButton.disabled = true;
@@ -389,7 +448,8 @@ editMonitorForm.addEventListener("submit", async (event) => {
             body: JSON.stringify({
                 name: name,
                 target: target,
-                monitor_type: monitorType
+                monitor_type: monitorType,
+                ...(monitorType === "tcp" ? { port: port } : {})
             })
         });
 

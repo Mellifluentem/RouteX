@@ -11,8 +11,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# Local SQLite database
+# Local SQLite databases and backups
 routex.db
+routex_backup.db
 
-# Temporary backup
+# Temporary backups
 api_backup.py
+database.py.bak

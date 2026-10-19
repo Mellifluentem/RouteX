@@ -399,5 +399,161 @@ class TestMonitorAPI(unittest.TestCase):
 
 
 
+    def test_create_tcp_monitor(self):
+        response = self.client.post(
+            "/monitors",
+            json={
+                "name": "TCP Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "tcp",
+                "port": 8080,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["monitor_type"], "tcp")
+        self.assertEqual(response.json()["port"], 8080)
+
+    def test_create_tcp_monitor_without_port_returns_422(self):
+        response = self.client.post(
+            "/monitors",
+            json={
+                "name": "TCP Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "tcp",
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_update_tcp_monitor_port(self):
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "TCP Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "tcp",
+                "port": 8080,
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.patch(
+            f"/monitors/{monitor_id}",
+            json={"port": 9090},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["monitor"]["port"], 9090)
+
+    @patch("api.check_tcp")
+    def test_run_tcp_check(self, mock_check_tcp):
+        mock_check_tcp.return_value = {
+            "status": "UP",
+            "latency_ms": 5.2,
+            "error": None,
+        }
+
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "TCP Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "tcp",
+                "port": 8080,
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+        monitor_id = create_response.json()["id"]
+
+        response = self.client.post(f"/monitors/{monitor_id}/check")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["check"]["status"], "UP")
+        mock_check_tcp.assert_called_once_with("127.0.0.1", 8080)
+
+
+
+    def test_create_tcp_monitor_with_invalid_port_returns_422(self):
+        for port in [0, 65536]:
+            with self.subTest(port=port):
+                response = self.client.post(
+                    "/monitors",
+                    json={
+                        "name": "Invalid TCP",
+                        "target": "127.0.0.1",
+                        "monitor_type": "tcp",
+                        "port": port,
+                    },
+                )
+
+                self.assertEqual(response.status_code, 422)
+
+    def test_create_ping_monitor_with_port_returns_422(self):
+        response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Ping Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+                "port": 8080,
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+
+
+
+    @patch("api.check_tcp")
+    def test_automatic_monitoring_runs_tcp_check(self, mock_check_tcp):
+        mock_check_tcp.return_value = {
+            "status": "UP",
+            "latency_ms": 4.5,
+            "error": None,
+        }
+
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "TCP Localhost",
+                "target": "127.0.0.1",
+                "monitor_type": "tcp",
+                "port": 8080,
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+
+        import asyncio
+
+        async def run_one_cycle():
+            task = asyncio.create_task(api.automatic_monitoring())
+
+            # Döngünün ilk kontrolü tamamlanana kadar bekle.
+            for _ in range(100):
+                if mock_check_tcp.called:
+                    break
+                await asyncio.sleep(0.01)
+
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_one_cycle())
+
+        mock_check_tcp.assert_called_once_with("127.0.0.1", 8080)
+
+        history_response = self.client.get(
+            f"/monitors/{create_response.json()['id']}/checks"
+        )
+        self.assertEqual(history_response.status_code, 200)
+        self.assertEqual(len(history_response.json()["checks"]), 1)
+        self.assertEqual(history_response.json()["checks"][0]["status"], "UP")
+
+
+
+
 if __name__ == "__main__":
     unittest.main()

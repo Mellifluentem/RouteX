@@ -8,14 +8,17 @@ A lightweight, modular, self-hosted monitoring platform for checking host and we
 
 - Ping-based host monitoring
 - HTTP/HTTPS monitoring
+- TCP port monitoring
 - UP/DOWN status detection
 - Latency and error reporting
 - REST API built with FastAPI
 - SQLite database integration
 - Persistent monitoring check history
 - Enable and disable monitors from the web dashboard
+- Edit and delete monitors
 - Automatic background monitoring every 60 seconds
 - Web dashboard for managing and viewing monitors
+- Manual checks and monitoring history
 
 ## Technologies
 
@@ -35,7 +38,8 @@ RouteX is currently under active development.
 - [x] V0.4 — SQLite integration
 - [x] V0.5 — Monitoring check history
 - [x] V0.6 — Automatic monitoring and monitor enable/disable controls
-- [ ] Future — TCP port monitoring
+- [x] V0.7 — Web dashboard improvements and monitor management
+- [x] V0.8 — TCP port monitoring
 - [ ] Future — Docker integration
 - [ ] Future — Agent-based monitoring
 
@@ -45,7 +49,7 @@ RouteX is currently under active development.
 
 - Python 3.10 or newer
 - Git
-- Python dependencies listed in requirements.txt
+- Python dependencies listed in `requirements.txt`
 
 ### Installation
 
@@ -96,12 +100,14 @@ http://127.0.0.1:8000/docs
 
 RouteX is currently in **beta development**. Features and functionality may change as development continues. The project is not yet considered stable or production-ready.
 
+The current test suite includes 44 passing tests and 2 passing subtests.
+
 ## Goal
 
-RouteX aims to provide a modular, self-hosted monitoring platform for hosts and web services, with future support for TCP ports, Docker containers, and agent-based devices.
+RouteX aims to provide a modular, self-hosted monitoring platform for hosts and web services, with future support for Docker containers and agent-based devices.
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-Copyright (c) 2026 RouteX Team
+Copyright (c) 2026 RouteX Team.
