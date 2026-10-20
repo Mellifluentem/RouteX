@@ -237,6 +237,51 @@ class TestMonitorAPI(unittest.TestCase):
         mock_check_http.assert_called_once_with("https://example.com")
 
 
+
+
+    def test_create_docker_monitor(self):
+        response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Docker Test",
+                "target": "test-container",
+                "monitor_type": "docker",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["monitor_type"], "docker")
+        self.assertEqual(response.json()["target"], "test-container")
+
+    @patch("api.check_container")
+    def test_run_docker_check(self, mock_check_container):
+        mock_check_container.return_value = {
+            "status": "UP",
+            "latency_ms": 3.5,
+            "error": None,
+        }
+
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Docker Test",
+                "target": "test-container",
+                "monitor_type": "docker",
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+
+        monitor_id = create_response.json()["id"]
+        response = self.client.post(
+            f"/monitors/{monitor_id}/check"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["check"]["status"], "UP")
+        mock_check_container.assert_called_once_with("test-container")
+
+
+
     def test_run_check_for_missing_monitor_returns_404(self):
         response = self.client.post("/monitors/999/check")
 
@@ -502,6 +547,57 @@ class TestMonitorAPI(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 422)
+
+
+    @patch("api.check_container")
+    def test_automatic_monitoring_runs_docker_check(
+        self, mock_check_container
+    ):
+        mock_check_container.return_value = {
+            "status": "UP",
+            "latency_ms": 3.5,
+            "error": None,
+        }
+
+        create_response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Docker Test",
+                "target": "test-container",
+                "monitor_type": "docker",
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+
+        import asyncio
+
+        async def run_one_cycle():
+            task = asyncio.create_task(api.automatic_monitoring())
+
+            for _ in range(100):
+                if mock_check_container.called:
+                    break
+                await asyncio.sleep(0.01)
+
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(run_one_cycle())
+
+        mock_check_container.assert_called_once_with("test-container")
+
+        history_response = self.client.get(
+            f"/monitors/{create_response.json()['id']}/checks"
+        )
+        self.assertEqual(history_response.status_code, 200)
+        self.assertEqual(len(history_response.json()["checks"]), 1)
+        self.assertEqual(
+            history_response.json()["checks"][0]["status"], "UP"
+        )
+
 
 
 

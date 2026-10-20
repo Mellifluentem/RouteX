@@ -3,7 +3,10 @@ import asyncio
 from contextlib import asynccontextmanager, closing
 from pathlib import Path
 from typing import Literal
-
+from checks.tcp import check_tcp
+from checks.ping import check_ping
+from checks.http import check_http
+from checks.docker_check import check_container
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 from checks.tcp import check_tcp
@@ -71,10 +74,15 @@ async def automatic_monitoring():
                     result = await asyncio.to_thread(
                         check_http, monitor["target"]
                     )
-                else:
+                elif monitor["monitor_type"] == "tcp":
                     result = await asyncio.to_thread(
                         check_tcp, monitor["target"], monitor["port"]
                     )
+                elif monitor["monitor_type"] == "docker":
+                    result = await asyncio.to_thread(
+                        check_container, monitor["target"]
+                    )
+
 
                 with closing(get_connection()) as connection:
                     connection.execute(
@@ -103,7 +111,7 @@ async def automatic_monitoring():
 
 class MonitorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    monitor_type: Literal["ping", "http", "tcp"]
+    monitor_type: Literal["ping", "http", "tcp", "docker"]
     target: str = Field(min_length=1, max_length=500)
     port: int | None = Field(default=None, ge=1, le=65535)
 
@@ -132,7 +140,7 @@ class MonitorCreate(BaseModel):
 
 class MonitorUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    monitor_type: Literal["ping", "http", "tcp"] | None = None
+    monitor_type: Literal["ping", "http", "tcp", "docker"] | None = None
     target: str | None = Field(default=None, min_length=1, max_length=500)
     port: int | None = Field(default=None, ge=1, le=65535)
 
@@ -376,8 +384,11 @@ def run_monitor_check(monitor_id: int):
         result = check_ping(monitor["target"])
     elif monitor["monitor_type"] == "http":
         result = check_http(monitor["target"])
-    else:
+    elif monitor["monitor_type"] == "tcp":
         result = check_tcp(monitor["target"], monitor["port"])
+    elif monitor["monitor_type"] == "docker":
+        result = check_container(monitor["target"])
+
 
     with closing(get_connection()) as connection:
         connection.execute(

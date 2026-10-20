@@ -33,7 +33,7 @@ def init_db():
                     name TEXT NOT NULL,
                     target TEXT NOT NULL,
                     monitor_type TEXT NOT NULL
-                        CHECK (monitor_type IN ('ping', 'http', 'tcp')),
+                        CHECK (monitor_type IN ('ping', 'http', 'tcp', 'docker')),
                     enabled INTEGER NOT NULL DEFAULT 1,
                     port INTEGER
                 )
@@ -68,7 +68,7 @@ def init_db():
             ).fetchone()["sql"]
 
             # Rebuild the table if its CHECK constraint does not allow TCP.
-            if "'tcp'" not in table_sql:
+            if "'tcp'" not in table_sql or "'docker'" not in table_sql:
                 connection.execute(
                     """
                     CREATE TABLE monitors_new (
@@ -76,7 +76,7 @@ def init_db():
                         name TEXT NOT NULL,
                         target TEXT NOT NULL,
                         monitor_type TEXT NOT NULL
-                            CHECK (monitor_type IN ('ping', 'http', 'tcp')),
+                            CHECK (monitor_type IN ('ping', 'http', 'tcp', 'docker')),
                         enabled INTEGER NOT NULL DEFAULT 1,
                         port INTEGER
                     )
