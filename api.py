@@ -413,8 +413,60 @@ def run_monitor_check(monitor_id: int):
 
 @app.get("/monitors/{monitor_id}/checks")
 def get_monitor_checks(monitor_id: int):
-    # Check that the monitor exists
     get_monitor(monitor_id)
+
+    with closing(get_connection()) as connection:
+        rows = connection.execute(
+            """
+            SELECT id, monitor_id, status, latency_ms, error, checked_at
+            FROM checks
+            WHERE monitor_id = ?
+            ORDER BY id DESC
+            """,
+            (monitor_id,),
+        ).fetchall()
+
+    return {"checks": [dict(row) for row in rows]}
+
+
+@app.get("/monitors/{monitor_id}/stats")
+def get_monitor_stats(monitor_id: int):
+    get_monitor(monitor_id)
+
+    with closing(get_connection()) as connection:
+        row = connection.execute(
+            """
+            SELECT
+                COUNT(*) AS total_checks,
+                SUM(CASE WHEN status = 'UP' THEN 1 ELSE 0 END) AS up_checks,
+                SUM(CASE WHEN status = 'DOWN' THEN 1 ELSE 0 END) AS down_checks,
+                AVG(latency_ms) AS avg_latency_ms,
+                MIN(checked_at) AS first_check_at,
+                MAX(checked_at) AS last_check_at
+            FROM checks
+            WHERE monitor_id = ?
+            """,
+            (monitor_id,),
+        ).fetchone()
+
+    total = row["total_checks"]
+    up = row["up_checks"] or 0
+    down = row["down_checks"] or 0
+
+    return {
+        "monitor_id": monitor_id,
+        "total_checks": total,
+        "up_checks": up,
+        "down_checks": down,
+        "success_rate": round(up / total * 100, 2) if total else 0.0,
+        "avg_latency_ms": (
+            round(row["avg_latency_ms"], 2)
+            if row["avg_latency_ms"] is not None
+            else None
+        ),
+        "first_check_at": row["first_check_at"],
+        "last_check_at": row["last_check_at"],
+    }
 
     with closing(get_connection()) as connection:
         rows = connection.execute(

@@ -20,6 +20,10 @@ A lightweight, modular, self-hosted monitoring platform for checking host, web s
 - Automatic background monitoring every 60 seconds
 - Web dashboard for managing and viewing monitors
 - Manual checks and monitoring history
+- Per-monitor statistics endpoint
+- Total, UP, and DOWN check counts
+- Check success rate and average latency
+- First and last recorded check timestamps
 
 ## Technologies
 
@@ -45,6 +49,9 @@ RouteX is currently in **beta development**. Features and functionality may chan
 - [x] V0.7 — Web dashboard improvements and monitor management
 - [x] V0.8 — TCP port monitoring
 - [x] V0.9 — Docker container monitoring
+- [x] V0.10 — Monitoring statistics and history metrics API
+- [ ] V0.11 — Dashboard visualization and UI/UX improvements
+- [ ] V1.0 — Installation, configuration, backup/restore, and reliability improvements
 - [ ] Future — Agent-based monitoring
 
 ## Getting Started
@@ -109,7 +116,7 @@ For a Docker monitor, use a container name or ID as the target. RouteX reports w
 
 ## Tests
 
-The current test suite has **53 passing tests** and **2 passing subtests**.
+The current test suite has **43 passing tests**
 
 ## Goal
 

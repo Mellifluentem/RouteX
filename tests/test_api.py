@@ -649,6 +649,65 @@ class TestMonitorAPI(unittest.TestCase):
         self.assertEqual(history_response.json()["checks"][0]["status"], "UP")
 
 
+    @patch("api.check_ping")
+    def test_monitor_stats(self, mock_check_ping):
+        mock_check_ping.side_effect = [
+            {"status": "UP", "latency_ms": 10.0, "error": None},
+            {"status": "DOWN", "latency_ms": None, "error": "Timeout"},
+            {"status": "UP", "latency_ms": 20.0, "error": None},
+        ]
+
+        response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Stats Test",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = response.json()["id"]
+
+        for _ in range(3):
+            self.client.post(f"/monitors/{monitor_id}/check")
+
+        stats_response = self.client.get(
+            f"/monitors/{monitor_id}/stats"
+        )
+
+        self.assertEqual(stats_response.status_code, 200)
+        stats = stats_response.json()
+        self.assertEqual(stats["total_checks"], 3)
+        self.assertEqual(stats["up_checks"], 2)
+        self.assertEqual(stats["down_checks"], 1)
+        self.assertEqual(stats["success_rate"], 66.67)
+        self.assertEqual(stats["avg_latency_ms"], 15.0)
+        self.assertIsNotNone(stats["first_check_at"])
+        self.assertIsNotNone(stats["last_check_at"])
+
+    def test_monitor_stats_without_checks(self):
+        response = self.client.post(
+            "/monitors",
+            json={
+                "name": "Empty Stats",
+                "target": "127.0.0.1",
+                "monitor_type": "ping",
+            },
+        )
+        monitor_id = response.json()["id"]
+
+        stats_response = self.client.get(
+            f"/monitors/{monitor_id}/stats"
+        )
+
+        self.assertEqual(stats_response.status_code, 200)
+        stats = stats_response.json()
+        self.assertEqual(stats["total_checks"], 0)
+        self.assertEqual(stats["up_checks"], 0)
+        self.assertEqual(stats["down_checks"], 0)
+        self.assertEqual(stats["success_rate"], 0.0)
+        self.assertIsNone(stats["avg_latency_ms"])
+        self.assertIsNone(stats["first_check_at"])
+        self.assertIsNone(stats["last_check_at"])
 
 
 if __name__ == "__main__":
