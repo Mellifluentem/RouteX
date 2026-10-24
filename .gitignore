@@ -1,23 +1,29 @@
-.env
-.venv/
-.env.local
-.env.development
-.env.development.local
-.env.test
-.env.test.local
-.env.production
-.env.production.local
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv/
 
-# Local SQLite databases and backups
-routex.db
-routex_backup.db
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
 
-# Temporary backups
+# SQLite databases and backups
+*.db
+*.db-wal
+*.db-shm
+
+# Temporary and backup files
 api_backup.py
 database.py.bak
+*.bak
+*.tmp
 
-# Local SQLite databases and backups
-*.db
+# IDE and editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

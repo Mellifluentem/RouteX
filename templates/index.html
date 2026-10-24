@@ -87,18 +87,20 @@
             <h2>Monitors</h2>
             <p id="loading-message">Loading monitors...</p>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Target</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="monitor-list"></tbody>
-            </table>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Target</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monitor-list"></tbody>
+                </table>
+            </div>
         </section>
 
 
@@ -155,18 +157,44 @@
             <h2>Check History</h2>
             <p id="history-monitor-name"></p>
             <p id="history-message"></p>
+            <div id="history-stats" class="stats history-stats" hidden>
+                <article>
+                    <h3>Total Checks</h3>
+                    <p id="history-total">0</p>
+                </article>
+                <article>
+                    <h3>Success Rate</h3>
+                    <p id="history-success">0%</p>
+                </article>
+                <article>
+                    <h3>Average Latency</h3>
+                    <p id="history-latency">—</p>
+                </article>
+                <article>
+                    <h3>Estimated Downtime</h3>
+                    <p id="history-downtime">—</p>
+                </article>
+            </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Latency</th>
-                        <th>Error</th>
-                        <th>Checked At</th>
-                    </tr>
-                </thead>
-                <tbody id="history-list"></tbody>
-            </table>
+            <div class="chart-panel">
+                <h3>Check History</h3>
+                <p id="history-chart-message">Select a monitor to view its history.</p>
+                <div id="history-chart" role="img" aria-label="Monitor check history chart"></div>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Latency</th>
+                            <th>Error</th>
+                            <th>Checked At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-list"></tbody>
+                </table>
+            </div>
         </section>
 
     </main>

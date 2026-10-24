@@ -21,21 +21,27 @@ class TestHTTP(unittest.TestCase):
         self.assertIsNotNone(result["latency_ms"])
         self.assertIsNone(result["error"])
 
+
     @patch("checks.http.urllib.request.urlopen")
     def test_http_404(self, mock_urlopen):
-        mock_urlopen.side_effect = HTTPError(
+        http_error = HTTPError(
             "https://example.com/missing",
             404,
             "Not Found",
             {},
             None,
         )
+        mock_urlopen.side_effect = http_error
 
-        result = check_http("https://example.com/missing")
+        try:
+            result = check_http("https://example.com/missing")
+        finally:
+            http_error.close()
 
         self.assertEqual(result["status"], "DOWN")
         self.assertEqual(result["http_status_code"], 404)
         self.assertEqual(result["error"], "HTTP status 404")
+
 
     def test_invalid_url(self):
         result = check_http("ftp://example.com")

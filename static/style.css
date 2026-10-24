@@ -92,13 +92,16 @@ h2 {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 14px;
-    overflow-x: auto;
 }
 
-table {
+.table-scroll {
     width: 100%;
-    border-collapse: collapse;
-    text-align: left;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll table {
+    min-width: 600px;
 }
 
 th,
@@ -148,5 +151,121 @@ tbody tr:last-child td {
 
     #monitors {
         padding: 16px;
+    }
+}
+
+.history-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 24px 0;
+}
+
+.chart-panel {
+    margin: 24px 0;
+    padding: 20px;
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.chart-panel h3 {
+    margin-top: 0;
+}
+
+#history-chart {
+    width: 100%;
+    min-height: 40px;
+    overflow-x: auto;
+}
+
+#history-chart {
+    width: 100%;
+    min-width: 0;
+}
+
+#history-chart svg {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-width: 0;
+}
+
+@media (max-width: 650px) {
+    .history-stats {
+        gap: 10px;
+    }
+
+    .history-stats article {
+        padding: 12px;
+    }
+
+    .history-stats p {
+        font-size: 21px;
+        overflow-wrap: anywhere;
+    }
+
+    .chart-panel {
+        padding: 14px;
+    }
+}
+
+/* Form layout */
+#add-monitor,
+#edit-monitor-section {
+    margin-bottom: 32px;
+}
+
+#monitor-form,
+#edit-monitor-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+#monitor-form label,
+#edit-monitor-form label {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+#monitor-form input,
+#monitor-form select,
+#edit-monitor-form input,
+#edit-monitor-form select {
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+    color: var(--text);
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+}
+
+#monitor-form button,
+#edit-monitor-form button {
+    min-height: 42px;
+    padding: 10px 16px;
+    color: var(--text);
+    background: var(--panel-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    cursor: pointer;
+}
+
+@media (max-width: 650px) {
+    #monitor-form,
+    #edit-monitor-form {
+        padding: 16px;
+    }
+
+    #monitor-form button,
+    #edit-monitor-form button {
+        width: 100%;
     }
 }
