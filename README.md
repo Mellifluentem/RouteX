@@ -143,6 +143,16 @@ export ROUTEX_DATABASE_PATH=/path/to/routex.db
 uvicorn api:app --reload
 ```
 
+**Windows (PowerShell):**
+
+Set the database path for the current PowerShell session and start RouteX:
+
+```powershell
+$env:ROUTEX_DATABASE_PATH = "C:\RouteX\data\routex.db"
+uvicorn api:app --reload
+```
+**Note:** Make sure the directory exists and is writable before starting the application. This setting applies only to the current PowerShell session.
+
 Choose a writable location for the database. Keep database files and backups in a safe location.
 
 ## Docker Monitoring
